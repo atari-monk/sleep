@@ -25,13 +25,33 @@ const SleepRecord = mongoose.model('SleepRecord', sleepRecordSchema)
 // Middleware for parsing JSON requests
 app.use(bodyParser.json())
 
-// Create a new sleep record
+// Create a new sleep record for bedtime
 app.post('/api/sleep-record', async (req, res) => {
   try {
-    const { bedtime, wakeupTime } = req.body
-    const sleepRecord = new SleepRecord({ bedtime, wakeupTime })
+    const { bedtime } = req.body
+    const sleepRecord = new SleepRecord({ bedtime, wakeupTime: null })
     await sleepRecord.save()
-    res.status(201).json({ message: 'Sleep record created' })
+    res.status(201).json({ message: 'Bedtime recorded' })
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+// Update the wakeup time for the most recent bedtime record
+app.post('/api/sleep-record/wake-up', async (req, res) => {
+  try {
+    const { wakeupTime } = req.body
+    const mostRecentRecord = await SleepRecord.findOne({
+      wakeupTime: null,
+    }).sort({ bedtime: -1 })
+
+    if (!mostRecentRecord) {
+      res.status(404).json({ error: 'No open bedtime record found' })
+    } else {
+      mostRecentRecord.wakeupTime = wakeupTime
+      await mostRecentRecord.save()
+      res.status(200).json({ message: 'Wake-up time recorded' })
+    }
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' })
   }
